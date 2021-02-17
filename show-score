@@ -1,0 +1,186 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use YAML::XS qw(LoadFile);
+use List::Util qw(sum max);
+use Getopt::Std;
+
+my %o;
+getopts('f',\%o);
+
+my $yf=$ARGV[0] || '';
+if ($yf eq '') {
+  opendir D,'.';
+  my @yf=sort grep /\.ya?ml$/,readdir D;
+  closedir D;
+  $yf=$yf[-1];
+}
+my $y=LoadFile($yf) or die "no $yf";
+
+my %scores;
+my %tp;
+my %ttp;
+my %teams;
+
+my @out;
+
+push @out,'Scores:';
+my @tab=([qw(rider placing combativity mountain time)]);
+foreach my $player (sort keys %{$y->{players}}) {
+  my $tn="$player ($y->{players}{$player}{colourname})";
+  foreach my $rider (@{$y->{players}{$player}{riders}}) {
+    my $rn="$y->{players}{$player}{colourname} $rider->{type}";
+    $teams{$rn}=$tn;
+    my @line=($rn);
+    foreach my $mode (qw(place combativity mountain)) {
+      my $t=$rider->{score}{$mode} || $rider->{$mode} || 0;
+      my $sc=0;
+      if (ref $t) {
+        $sc=sum(@{$t});
+      } else {
+        $sc=$t;
+      }
+      push @line,$sc;
+      if ($mode eq 'place') {
+        $tp{$rn}=$sc;
+      } else {
+        push @{$scores{$mode}{$sc}},$rn;
+      }
+    }
+    push @line,writetime($rider->{time});
+    push @tab,\@line;
+    push @{$scores{time}{100000-$rider->{time}}},$rn;
+  }
+}
+if (exists $y->{style} && $y->{style} eq 'bgg') {
+  push @out,maketable_bgg(\@tab);
+} else {
+  push @out,maketable_discourse(\@tab);
+}
+push @out,'';
+
+if ($o{f}) {
+  foreach my $mode (qw(combativity mountain time)) {
+    my @s=sort {$b <=> $a} keys %{$scores{$mode}};
+    if (scalar @s > 3) {
+      splice @s,3;
+    }
+    my @p=(3,2,1);
+    foreach my $sc (@s) {
+      my $pt=shift @p;
+      foreach my $rn (@{$scores{$mode}{$sc}}) {
+        $tp{$rn}+=$pt;
+      }
+    }
+  }
+}
+
+my %is;
+foreach my $rn (keys %tp) {
+  push @{$is{$tp{$rn}}},$rn;
+}
+my @is=sort {$b <=> $a} keys %is;
+
+push @out,'Rider standing:';
+@tab=([qw(place rider TP)]);
+my $place=1;
+foreach my $score (@is) {
+  my $pl=$place;
+  if (scalar @{$is{$score}} > 1) {
+    $pl.='=';
+  }
+  $pl.='.';
+  foreach my $rn (@{$is{$score}}) {
+    push @tab,[$pl,$rn,$tp{$rn}];
+    $ttp{$teams{$rn}}+=$tp{$rn};
+  }
+  $place+=scalar @{$is{$score}};
+}
+
+my %ts;
+foreach my $tn (keys %ttp) {
+  push @{$ts{$ttp{$tn}}},$tn;
+}
+my @ts=sort {$b <=> $a} keys %ts;
+
+if (exists $y->{style} && $y->{style} eq 'bgg') {
+  push @out,maketable_bgg(\@tab);
+} else {
+  push @out,maketable_discourse(\@tab);
+}
+push @out,'';
+
+push @out,'Team standing:';
+@tab=([qw(place team TP)]);
+$place=1;
+foreach my $score (@ts) {
+  my $pl=$place;
+  if (scalar @{$ts{$score}} > 1) {
+    $pl.='=';
+  }
+  $pl.='.';
+  foreach my $tn (@{$ts{$score}}) {
+    push @tab,[$pl,$tn,$ttp{$tn}];
+  }
+  $place+=scalar @{$ts{$score}};
+}
+
+if (exists $y->{style} && $y->{style} eq 'bgg') {
+  push @out,maketable_bgg(\@tab);
+} else {
+  push @out,maketable_discourse(\@tab);
+}
+
+print map {"$_\n"} @out;
+
+sub writetime {
+  my $t=shift;
+  my $s=$t % 60;
+  my $m=int($t/60);
+  my $h=int($m/60);
+  $m %= 60;
+  return sprintf('%01d:%02d:%02d',$h,$m,$s);
+}
+
+sub maketable_discourse {
+  my $d=shift;
+  my $n=scalar @{$d->[0]};
+  splice @{$d},1,0,[('-') x $n];
+  my $tab='';
+  foreach my $l (@{$d}) {
+    $tab.=join('|','',@{$l},'');
+    $tab.="\n";
+  }
+  return $tab;
+}
+
+sub maketable_bgg {
+  my $d=shift;
+  my $mxr=$#{$d};
+  my $mxc=0;
+  my @out;
+  foreach my $row (0..$#{$d}) {
+    $mxc=max($mxc,$#{$d->[$row]});
+  }
+  my $tab;
+  foreach my $column (0..$mxc) {
+    my @stack;
+    foreach my $row (0..$mxr) {
+      my $text='';
+      if (ref $d->[$row]) {
+        if (defined $d->[$row][$column]) {
+          $text=($d->[$row][$column]);
+        }
+      }
+      push @stack,$text;
+    }
+    $stack[0]='[floatleft]'.$stack[0];
+    $stack[-1].='[/floatleft]';
+    map {$stack[$_].="\n"} (0..$#stack-1);
+    $tab.=join('',@stack);
+  }
+  $tab.="[clear]\n";
+  return $tab;
+}

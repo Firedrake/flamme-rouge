@@ -1,0 +1,64 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use YAML::XS qw(LoadFile);
+
+my $yf=$ARGV[0] || '';
+if ($yf eq '') {
+  opendir D,'.';
+  my @yf=sort grep /\.ya?ml$/,readdir D;
+  closedir D;
+  $yf=$yf[-1];
+}
+my $y=LoadFile($yf) or die "no $yf";
+
+my @out;
+foreach my $player (sort keys %{$y->{players}}) {
+  my $w=0;
+  my @line=($player,$y->{players}{$player}{colourname});
+  foreach my $rider (@{$y->{players}{$player}{riders}}) {
+    push @line,$rider->{type};
+    if (exists $rider->{location}) {
+      if (exists $rider->{play}) {
+        push @line,join('+',@{$rider->{play}});
+      } else {
+          my %c=map {$_ => 1} @{$rider->{hand}};
+          delete $c{2};
+          delete $c{X};
+          if (keys %c) { # we have something other than 2/X
+            push @line,'.';
+            $w=1;
+          } else {
+            push @line,'a';
+          }
+      }
+    } else {
+      push @line,'/';
+    }
+  }
+  push @line,$w?'waiting':'';
+  push @out,\@line;
+}
+
+print tabular(\@out);
+
+sub tabular {
+  my $d=shift;
+  my @columnlength;
+  foreach my $row (@{$d}) {
+    foreach my $colno (0..$#{$row}) {
+      if (!defined($columnlength[$colno]) ||
+          $columnlength[$colno] < length($row->[$colno])) {
+        $columnlength[$colno]=length($row->[$colno]);
+      }
+    }
+  }
+  my $format=join('  ',map {"%${_}s"} @columnlength);
+  my $result='';
+  foreach my $row (@{$d}) {
+    $result .= sprintf($format,@{$row})."\n";
+  }
+  return $result;
+}

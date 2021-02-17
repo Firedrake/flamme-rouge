@@ -1,0 +1,130 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use List::Util qw(shuffle max);
+use YAML::XS qw(LoadFile DumpFile);
+use Getopt::Std;
+
+my %o=(1 => 'r',2 => 's');
+getopts('hb:t:c:n:1:2:',\%o);
+if ($o{h}) {
+  print STDERR <<EOF;
+Usage: $0 -t TEAMNAME (-c COLOUR) (-b BOTTYPE) -n COLOURNAME -1 RIDER -2 RIDER2 YAMLFILE
+COLOURNAME is a standard FR name, X11 name, or hex triplet
+COLOUR will be derived as a hex triplet from COLOURNAME if not given
+RIDER1/2 is r/s/g/p
+BOTTYPE is peloton or muscle; if given, rider types are ignored
+EOF
+  exit 0;
+}
+
+unless (defined $o{n} && defined $o{n}) {
+  die "Need all parameters - see -h.\n";
+}
+
+my $yf=$ARGV[0] || '';
+if ($yf eq '') {
+  opendir D,'.';
+  my @yf=sort grep /\.ya?ml$/,readdir D;
+  closedir D;
+  $yf=$yf[-1];
+}
+my $y={};
+if (-e $yf) {
+  $y=LoadFile($yf) or die "no $yf";
+}
+
+my @riders=qw(rouleur sprinteur grimpeur puncheur);
+my %r=map {substr($_,0,1) => $_} @riders;
+
+if (exists $y->{players}{$o{n}}) {
+  die "Player $o{n} is already in the file.\n";
+}
+
+my $colour='black';
+my %sc=(
+  black => '4e4946',
+  blue => '3d7399',
+  green => '18a561',
+  pink => 'f48d7c',
+  red => 'cd4c32',
+  white => 'dad5bd',
+    );
+
+if (exists $sc{$o{n}} ) {
+  $colour=$sc{$o{n}};
+} elsif ($o{n} =~ /^[0-9a-f]{6}$/i) {
+  $colour=$o{n};
+} else {
+  open I,'<','/etc/X11/rgb.txt';
+  while (<I>) {
+    chomp;
+    my @t=split /\t/,$_;
+    if (scalar @t > 2) {
+      if ($t[2] eq $o{c}) {
+        $colour=sprintf('%02x%02x%02x',split(' ',$t[0]));
+        last;
+      }
+    }
+  }
+  close I;
+}
+
+if (exists $o{b}) {
+  if ($o{b} eq 'peloton' || $o{b} eq 'muscle') {
+    $y->{players}{$o{t}}={bottype => $o{b},
+                          colourname => $o{n},
+                          colour => $colour,
+                          riders => [
+                            {
+                              type => 'r'},
+                            {
+                              type => 's'},
+                              ]};
+  } else {
+    die "Unknown bot type $o{b}\n";
+  }
+} else {
+  foreach my $rid (qw(1 2)) {
+    if (exists $r{$o{$rid}}) {
+      $o{$rid}=$r{$o{$rid}}
+    } else {
+      die "Unknown rider #$rid $o{$rid}\n";
+    }
+  }
+  $y->{players}{$o{t}}={colourname => $o{n},
+                        colour => $colour,
+                        riders => [
+                          {
+                            type => $o{1}},
+                          {
+                            type => $o{2}},
+                            ]};
+}
+
+DumpFile(newname($yf),$y);
+
+sub newname {
+  my $oldname=shift;
+  my $offset=shift || 0;
+  my @p=reverse split /\./,$oldname;
+  my $t;
+  foreach my $i (0..$#p) {
+    if ($p[$i] =~ /^[0-9]+$/) {
+      if ($offset) {
+        $offset--;
+      } else {
+        $t=$i;
+        last;
+      }
+    }
+  }
+  if (defined $t) {
+    $p[$t]=sprintf('%0'.length($p[$t]).'d',$p[$t]+1);
+  } else {
+    splice @p,1,0,'new';
+  }
+  return join('.',reverse @p);
+}

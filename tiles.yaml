@@ -1,0 +1,261 @@
+---
+a:
+  length: 6
+  features:
+  - start: 1-5
+b:
+  length: 6
+c:
+  length: 6
+d:
+  length: 6
+e:
+  length: 2
+  bend: +90
+f:
+  length: 6
+g:
+  length: 2
+  bend: +90
+h:
+  length: 2
+  bend: +45
+i:
+  length: 2
+  bend: +90
+j:
+  length: 2
+  bend: -90
+k:
+  length: 2
+  bend: -45
+l:
+  length: 6
+m:
+  length: 6
+n:
+  length: 6
+o:
+  length: 2
+  bend: -90
+p:
+  length: 2
+  bend: -90
+q:
+  length: 2
+  bend: +45
+r:
+  length: 2
+  bend: -45
+s:
+  length: 2
+  bend: -45
+t:
+  length: 2
+  bend: +45
+u:
+  length: 6
+  features:
+  - finish: 2-6
+A:
+  length: 6
+  features:
+  - start: 1-4
+B:
+  length: 6
+  features:
+  - downhill: 1-4
+C:
+  length: 6
+  features:
+  - uphill: 3-6
+D:
+  length: 6
+  features:
+  - uphill: 1-5
+  - downhill: 6
+E:
+  length: 2
+  bend: -90
+  features:
+  - uphill: 1-2
+F:
+  length: 6
+  features:
+  - downhill: 1-3
+G:
+  length: 2
+  bend: -90
+  features:
+  - uphill: 1-2
+H:
+  length: 2
+  bend: -45
+  features:
+  - downhill: 1-2
+I:
+  length: 2
+  bend: -90
+J:
+  length: 2
+  bend: +90
+K:
+  length: 2
+  bend: +45
+  features:
+  - uphill: 1-2
+L:
+  length: 6
+  features:
+  - uphill: 1-3
+  - downhill: 4-6
+M:
+  length: 6
+  features:
+  - uphill: 3-6
+N:
+  length: 6
+  features:
+  - uphill: 1-6
+O:
+  length: 2
+  bend: +90
+  features:
+  - uphill: 1-2
+P:
+  length: 2
+  bend: +90
+  features:
+  - downhill: 1-2
+Q:
+  length: 2
+  bend: -45
+  features:
+  - uphill: 1-2
+R:
+  length: 2
+  bend: +45
+  features:
+  - uphill: 1-2
+S:
+  length: 2
+  bend: +45
+T:
+  length: 2
+  bend: -45
+U:
+  length: 6
+  features:
+  - uphill: 1-6
+  - finish: 3-6
+1:
+  length: 6
+  lanes: 3
+  features:
+  - start: 1-4
+^1:
+  length: 6
+  lanes: 3
+  features:
+  - start: 1-5
+2:
+  length: 6
+  lanes: 3
+  features:
+  - 2lane: 6
+  - breakaway: 4
+^2:
+  length: 6
+  features:
+  - breakaway: 4
+3:
+  length: 6
+  features:
+  - 3lane: 1-5
+  - supply: 1-5
+^3:
+  length: 6
+  features:
+  - 1lane: 3-4
+  - 1lane: 6
+  - cobbles: 3-6
+4:
+  length: 6
+  features:
+  - 3lane: 1-5
+  - supply: 1-5
+^4:
+  length: 6
+  features:
+  - 1lane: 1
+  - 1lane: 3-4
+  - cobbles: 1-4
+5:
+  length: 6
+  features:
+  - 1lane: 1
+  - 1lane: 3
+  - 1lane: 5-6
+  - cobbles: 1-6
+^5:
+  length: 6
+  features:
+  - 1lane: 1-2
+  - cobbles: 1-2
+6:
+  length: 6
+  lanes: 1
+  features:
+  - 2lane: 3
+  - cobbles: 1-6
+^6:
+  length: 6
+  lanes: 1
+  features:
+  - 2lane: 4
+  - 2lane: 6
+  - cobbles: 1-5
+7:
+  length: 6
+  features:
+  - 1lane: 3-4
+  - 1lane: 6
+  - cobbles: 3-6
+^7:
+  length: 6
+  features:
+  - 1lane: 4
+  - 1lane: 6
+  - cobbles: 4-6
+8:
+  length: 6
+  features:
+  - 1lane: 4
+  - 1lane: 6
+  - cobbles: 4-6
+^8:
+  length: 6
+  lanes: 1
+  features:
+  - 2lane: 3
+  - 2lane: 6
+  - cobbles: 1-5
+9:
+  length: 3
+  lanes: 2
+  features:
+  - supply: 1-2
+  - 3lane: 1-2
+^9:
+  length: 3
+  lanes: 2
+  features:
+    - 3lane: 1-2
+'%B':
+  length: 2
+  lanes: 1
+'%C':
+  length: 2
+  lanes: 1
+  features:
+  - uphill: 1-2

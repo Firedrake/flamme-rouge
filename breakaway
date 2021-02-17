@@ -1,0 +1,177 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use YAML::XS qw(LoadFile DumpFile);
+use List::Util qw(sum);
+
+my $yf=$ARGV[0] || '';
+if ($yf eq '') {
+  opendir D,'.';
+  my @yf=sort grep /\.ya?ml$/,readdir D;
+  closedir D;
+  $yf=$yf[-1];
+}
+my $y=LoadFile($yf) or die "no $yf";
+my $ti=LoadFile('../tiles.yaml') or die 'no tiles';
+
+my @brk;
+{
+  my $s=0;
+  my @course=split '',$y->{course};
+  while (my $f=shift @course) {
+    if (!exists $ti->{$f}) {
+      $f.=shift @course;
+      if (!exists $ti->{$f}) {
+        die "no tile $f\n";
+      }
+    }
+    my %fk;
+    if (exists $ti->{$f}{features}) {
+      my @lanes=($ti->{$f}{lanes} || 2) x $ti->{$f}{length};
+      my $b;
+      foreach my $fh (@{$ti->{$f}{features}}) {
+        my $k=(keys %{$fh})[0];
+        $fk{$k}=$fh->{$k};
+        my @r;
+        if ($fh->{$k} =~ /([0-9]+)-([0-9]+)/) {
+          @r=($1,$2);
+        } else {
+          @r=($fh->{$k},$fh->{$k});
+        }
+        if ($k =~ /([0-9]+)lane/) {
+          my $l=$1;
+          foreach my $i ($r[0]..$r[1]) {
+            $lanes[$i-1]=$l;
+          }
+        } elsif ($k eq 'breakaway') {
+          $b=$r[0]+$s-1;
+        }
+      }
+      if (defined $b) {
+        my @s=qw(z y x);
+        splice @s,$lanes[$b-$s]-1;
+        @brk=map {sprintf('%02d%1s',$b,$_)} @s;
+      }
+    }
+    $s+=$ti->{$f}{length};
+  }
+}
+
+my %rh;
+my %count;
+my %cards;
+my @out;
+foreach my $player (sort keys %{$y->{players}}) {
+  foreach my $rider (@{$y->{players}{$player}{riders}}) {
+    unless (exists $rider->{location}) {
+      next;
+    }
+    if (exists $rider->{play} && scalar @{$rider->{play}} > 0) {
+      $cards{"$player/$rider->{type}"}=$rider->{play};
+      push @{$rh{sum(map {($_ eq 'X')?2:$_} @{$rider->{play}})}},
+        {player => $player,rider => $rider};
+      if (!exists $rider->{hand}) {
+        $count{scalar @{$rider->{play}}}++;
+      }
+    }
+  }
+}
+
+if (exists $count{1} && !exists $count{2} && $count{1}==scalar keys %{$y->{players}}) { # phase B
+  foreach my $score (sort {$b <=> $a} keys %rh) {
+    my @d;
+    foreach my $pi (sort {$a->{player} cmp $b->{player}} @{$rh{$score}}) {
+      push @d,"$pi->{player} ($y->{players}{$pi->{player}}{colourname}) $pi->{rider}{type}: ".join('+',@{$cards{"$pi->{player}/$pi->{rider}{type}"}});
+    }
+    push @out,join(', ',@d);
+  }
+  foreach my $player (sort keys %{$y->{players}}) {
+    foreach my $rider (@{$y->{players}{$player}{riders}}) {
+      foreach my $mode (qw(hand)) {
+        if (exists $rider->{$mode}) {
+          push @{$rider->{discard}},@{$rider->{$mode}};
+          delete $rider->{$mode};
+        }
+      }
+    }
+  }
+  warn "Now run energy -b\n\n";
+  DumpFile(newname($yf),$y);
+} elsif (exists $count{2} && !exists $count{1} && $count{2}==scalar keys %{$y->{players}}) { # phase D
+  my @b;
+  foreach my $score (sort {$b <=> $a} keys %rh) {
+    my @d;
+    foreach my $pi (sort {$a->{rider}{location} cmp $b->{rider}{location}} @{$rh{$score}}) {
+      push @d,"$pi->{player} ($y->{players}{$pi->{player}}{colourname}) $pi->{rider}{type}: ".join('+',@{$cards{"$pi->{player}/$pi->{rider}{type}"}});
+      if (scalar @b < scalar @brk) {
+        push @b,$pi;
+      }
+    }
+    push @out, join(', ',@d)." = $score";
+  }
+  foreach my $pii (0..$#b) {
+    my $pi=$b[$pii];
+    push @out,"Breakaway ".(1+$pii)." $pi->{player} ($y->{players}{$pi->{player}}{colourname}) $pi->{rider}{type}";
+    $pi->{rider}{play}=[qw(X X)];
+    $pi->{rider}{combativity}+=2;
+    $pi->{rider}{location}=shift @brk;
+  }
+  foreach my $player (sort keys %{$y->{players}}) {
+    foreach my $rider (@{$y->{players}{$player}{riders}}) {
+      foreach my $mode (qw(hand play discard)) {
+        if (exists $rider->{$mode}) {
+          push @{$rider->{deck}},@{$rider->{$mode}};
+          delete $rider->{$mode};
+        }
+      }
+    }
+  }
+  DumpFile(newname($yf,1),$y);
+} else {                        # unknown status
+  foreach my $player (sort keys %{$y->{players}}) {
+    my @pp;
+    foreach my $rider (@{$y->{players}{$player}{riders}}) {
+      if (exists $rider->{play}) {
+        push @out,"$player $rider->{type}: ".join('+',@{$rider->{play}});
+        undef @pp;
+        last;
+      } else {
+        push @pp,$rider->{type};
+      }
+    }
+    if (@pp) {
+      push @out,"$player (".join('/',@pp).')';
+    }
+  }
+  if (@out) {
+    unshift @out,'In progress:';
+  }
+}
+
+print map {"$_\n"} @out;
+
+sub newname {
+  my $oldname=shift;
+  my $offset=shift || 0;
+  my @p=reverse split /\./,$oldname;
+  my $t;
+  foreach my $i (0..$#p) {
+    if ($p[$i] =~ /^[0-9]+$/) {
+      if ($offset) {
+        $offset--;
+      } else {
+        $t=$i;
+        last;
+      }
+    }
+  }
+  if (defined $t) {
+    $p[$t]=sprintf('%0'.length($p[$t]).'d',$p[$t]+1);
+    map {if ($p[$_] =~ /^[0-9]+$/) {$p[$_]=sprintf('%0'.length($p[$_]).'d',0)}} (0..$t-1);
+  } else {
+    splice @p,1,0,'new';
+  }
+  return join('.',reverse @p);
+}

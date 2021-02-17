@@ -1,0 +1,79 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use YAML::XS qw(LoadFile DumpFile);
+use Getopt::Std;
+
+my %o;
+getopts('ht:r:s:p:g:',\%o);
+if ($o{h}) {
+  print STDERR <<EOF;
+Usage: $0 -t NAME -[rspg] PLACE -[rspg] PLACE YAMLFILE
+EOF
+  exit 0;
+}
+
+unless (defined $o{t}) {
+  die "Need all parameters - see -h.\n";
+}
+
+my $yf=$ARGV[0] || '';
+if ($yf eq '') {
+  opendir D,'.';
+  my @yf=sort grep /\.ya?ml$/,readdir D;
+  closedir D;
+  $yf=$yf[-1];
+}
+my $y={};
+if (-e $yf) {
+  $y=LoadFile($yf) or die "no $yf";
+}
+
+my @riders=qw(rouleur sprinteur grimpeur puncheur);
+my %r=map {substr($_,0,1) => $_} @riders;
+
+if (!exists $y->{players}{$o{t}}) {
+  die "Player $o{t} is not in the file.\n";
+}
+
+foreach my $rider (@{$y->{players}{$o{t}}{riders}}) {
+  my $rd=substr($rider->{type},0,1);
+  if (defined $r{$rd} && defined $o{$rd}) {
+    my $uor=uc($o{$rd});
+    if (defined $y->{startmap}{$uor}) {
+      $rider->{location}=$y->{startmap}{$uor};
+      delete $y->{startmap}{$uor};
+    } else {
+      die "Location $uor not available\n";
+    }
+  } else {
+    die "No place specification for $rider->{type}\n";
+  }
+}
+
+DumpFile(newname($yf),$y);
+
+sub newname {
+  my $oldname=shift;
+  my $offset=shift || 0;
+  my @p=reverse split /\./,$oldname;
+  my $t;
+  foreach my $i (0..$#p) {
+    if ($p[$i] =~ /^[0-9]+$/) {
+      if ($offset) {
+        $offset--;
+      } else {
+        $t=$i;
+        last;
+      }
+    }
+  }
+  if (defined $t) {
+    $p[$t]=sprintf('%0'.length($p[$t]).'d',$p[$t]+1);
+  } else {
+    splice @p,1,0,'new';
+  }
+  return join('.',reverse @p);
+}
