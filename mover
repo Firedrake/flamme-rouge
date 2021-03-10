@@ -277,11 +277,17 @@ my @intermediate=(dclone($y));
 {
   my $anyss=0;
   while (1) {
+    my %downness;
     my $ssm=0;
     my %or;
     foreach my $k (keys %riderloc) {
-      my ($a,$b)=loc2rowlane($k);
-      push @{$or{$a}},$k;
+      my ($row,$lane)=loc2rowlane($k);
+      push @{$or{$row}},$k;
+      my $pp=$y->{players}{$riderloc{$k}{player}};
+      my $pr=$pp->{riders}[$riderloc{$k}{index}];
+      if (exists $pr->{down}) {
+        $downness{$row}=1;
+      }
     }
     foreach my $r (sort {$a <=> $b} keys %or) {
       my @r=map {sprintf('%02d',$_)} ($r..$r+2);
@@ -292,7 +298,8 @@ my @intermediate=(dclone($y));
         foreach my $rr (@r) {
           if (exists $features[$rr]{uphill} ||
                 exists $features[$rr]{crosswind} ||
-                exists $features[$rr]{cobbles}) {
+                exists $features[$rr]{cobbles} ||
+                exists $downness{$rr}) {
             $ss=0;
             last;
           }
@@ -303,7 +310,8 @@ my @intermediate=(dclone($y));
           while (exists $or{$n}) {
             if (exists $features[$n]{uphill} ||
                   exists $features[$n]{crosswind} ||
-                  exists $features[$n]{cobbles}) {
+                  exists $features[$n]{cobbles} ||
+                  exists $downness{$n}) {
               last;
             } else {
               push @movers,reverse sort @{$or{$n}};
