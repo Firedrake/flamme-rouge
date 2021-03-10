@@ -64,8 +64,8 @@ foreach my $player (sort keys %{$y->{players}}) {
   }
   if (@o) {
     if ($auto) {
-      next;
-      # @o=('All riders are being played automatically');
+      # next;
+      @o=('All riders are being played automatically');
     }
     if (exists $y->{style} && $y->{style} eq 'bgg') {
       unshift @o,"For $player ($y->{players}{$player}{colourname}) only\n[o]";
