@@ -26,6 +26,7 @@ my %teams;
 
 my @out;
 
+my %rix;
 push @out,'Scores:';
 my @tab=([qw(rider placing combativity mountain time)]);
 foreach my $player (sort keys %{$y->{players}}) {
@@ -51,18 +52,15 @@ foreach my $player (sort keys %{$y->{players}}) {
     }
     push @line,writetime($rider->{time});
     push @tab,\@line;
+    $rix{$rn}=$#tab;
     push @{$scores{time}{100000-$rider->{time}}},$rn;
   }
 }
-if (exists $y->{style} && $y->{style} eq 'bgg') {
-  push @out,maketable_bgg(\@tab);
-} else {
-  push @out,maketable_discourse(\@tab);
-}
-push @out,'';
 
 if ($o{f}) {
+  my $ix=1;
   foreach my $mode (qw(combativity mountain time)) {
+    $ix++;
     my @s=sort {$b <=> $a} keys %{$scores{$mode}};
     if (scalar @s > 3) {
       splice @s,3;
@@ -72,10 +70,18 @@ if ($o{f}) {
       my $pt=shift @p;
       foreach my $rn (@{$scores{$mode}{$sc}}) {
         $tp{$rn}+=$pt;
+        $tab[$rix{$rn}][$ix] .= " (+$pt)";
       }
     }
   }
 }
+
+if (exists $y->{style} && $y->{style} eq 'bgg') {
+  push @out,maketable_bgg(\@tab);
+} else {
+  push @out,maketable_discourse(\@tab);
+}
+push @out,'';
 
 my %is;
 foreach my $rn (keys %tp) {
